@@ -37,6 +37,36 @@ app.post("/generate-text", async (req, res) => {
   }
 });
 
+const imageToGenerativePart = (filePath) => ({
+  inlineData: {
+    data: fs.readFileSync(filePath).toString("base64"),
+    mimeType: "image/png",
+  },
+});
+
+app.post("/generate-from-image", upload.single("image"), async (req, res) => {
+  const prompt = req.body.prompt || "Describe this image";
+  const image = imageToGenerativePart(req.file.path);
+
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt is required." });
+  }
+
+  if (!image) {
+    return res.status(400).json({ error: "Image is required." });
+  }
+
+  try {
+    const result = await model.generateContent(prompt, image);
+
+    const response = await result.response.text();
+    res.status(200).send({ success: true, text: response });
+  } catch (error) {
+    console.error("Error generating content:", error);
+    res.status(500).json({ error: "Failed to generate content." });
+  }
+});
+
 const PORT = 3000;
 
 app.listen(PORT, () => {
