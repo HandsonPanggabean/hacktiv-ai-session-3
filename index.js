@@ -29,7 +29,7 @@ app.post("/generate-text", async (req, res) => {
   try {
     const result = await model.generateContent(prompt);
 
-    const response = await result.response.text();
+    const response = result.response.text();
     res.status(200).send({ success: true, text: response });
   } catch (error) {
     console.error("Error generating content:", error);
@@ -59,11 +59,65 @@ app.post("/generate-from-image", upload.single("image"), async (req, res) => {
   try {
     const result = await model.generateContent(prompt, image);
 
-    const response = await result.response.text();
+    const response = result.response.text();
     res.status(200).send({ success: true, text: response });
   } catch (error) {
     console.error("Error generating content:", error);
     res.status(500).json({ error: "Failed to generate content." });
+  }
+});
+
+app.post(
+  "/generate-from-document",
+  upload.single("document"),
+  async (req, res) => {
+    const filePath = req.file.path;
+    const buffer = fs.readFileSync(filePath);
+    const base64Data = buffer.toString("base64");
+    const mimeType = req.file.mimetype;
+
+    try {
+      const documentPart = {
+        inlineData: { data: base64Data, mimeType },
+      };
+      const result = await model.generateContent([
+        "Analyze this document:",
+        documentPart,
+      ]);
+
+      const response = result.response.text();
+      res.status(200).send({ success: true, text: response });
+    } catch (error) {
+      console.error("Error generating content:", error);
+      res.status(500).json({ error: "Failed to generate content." });
+    } finally {
+      fs.unlinkSync(filePath);
+    }
+  }
+);
+
+app.post("/generate-from-audio", upload.single("audio"), async (req, res) => {
+  const filePath = req.file.path;
+  const audioBuffer = fs.readFileSync(filePath);
+  const base64Data = audioBuffer.toString("base64");
+  const mimeType = req.file.mimetype;
+
+  try {
+    const audioPart = {
+      inlineData: { data: base64Data, mimeType },
+    };
+    const result = await model.generateContent([
+      "Transcribe or analyze the following audio:",
+      audioPart,
+    ]);
+
+    const response = result.response.text();
+    res.status(200).send({ success: true, text: response });
+  } catch (error) {
+    console.error("Error generating content:", error);
+    res.status(500).json({ error: "Failed to generate content." });
+  } finally {
+    fs.unlinkSync(filePath);
   }
 });
 
